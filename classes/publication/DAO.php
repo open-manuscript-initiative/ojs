@@ -134,16 +134,16 @@ class DAO extends \PKP\publication\DAO
                         fn (Builder $q) => $q->whereNull('pss.setting_value'),
                         fn (Builder $q) => $q->when(
                             $settingValue == PubObjectsExportPlugin::EXPORT_STATUS_DEPOSITABLE,
-                            fn (Builder $q) => $q->whereNull('pss.setting_value')->orWhere('pss.setting_value', '=', PubObjectsExportPlugin::EXPORT_STATUS_STALE),
+                            fn (Builder $q) => $q->where(fn (Builder $q) => $q->whereNull('pss.setting_value')->orWhere('pss.setting_value', '=', PubObjectsExportPlugin::EXPORT_STATUS_STALE)),
                             fn (Builder $q) => $q->where('pss.setting_value', '=', $settingValue)
                         )
                     )
                 )
             )
-            ->groupBy('p.publication_id')
+            ->groupBy('p.publication_id', 's.submission_id', 's.locale')
             ->orderByDesc('s.submission_id')
             ->orderByDesc('p.version_major')
-            ->select('p.*');
+            ->select(['p.*', 's.locale AS submission_locale']); // see DAO::fromRow for use of submission_locale
 
         $rows = $this->deprecatedDao->retrieveRange($q, [], $rangeInfo);
         return new DAOResultFactory($rows, $this, 'fromRowDeprecated', [], $q, [], $rangeInfo);
@@ -152,7 +152,7 @@ class DAO extends \PKP\publication\DAO
     /**
      * Deprecated; remove when getExportable is refactored
      */
-    public function fromRowDeprecated($row)
+    public function fromRowDeprecated(object $row): Publication
     {
         return $this->fromRow($row, [$row->publication_id], (object) []);
     }

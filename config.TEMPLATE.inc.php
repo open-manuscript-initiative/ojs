@@ -173,6 +173,12 @@ name = ojs
 ; Set to Off to connect with encryption but skip certificate verification (not recommended for production)
 ; verify = On
 
+; Keep the database connection open and reuse it across requests served by
+; the same PHP process (PDO persistent connection). The primary purpose is to
+; run the end-to-end test suites efficiently, where many short requests are
+; served by long-lived PHP processes. Not recommended for production.
+; persistent = Off
+
 ; Enable database debug output (very verbose!)
 debug = Off
 
@@ -337,6 +343,19 @@ allow_plugin_install = on
 ; The authentication remains valid for the specified number of minutes before re-authentication is required again.
 ; Set to 0 to disable re-authentication.
 ;password_timeout = 0
+
+; When set to On, pass article galley HTML through a filter to remove potentially malicious content.
+filter_galley_html = Off
+
+; When the filter_galley_html option is turned On, only allowed "safe" elements will be permitted.
+; Use the following setting to allow additional elements and attributes.
+; Use e.g. "img[id|style],math" to allow "id" and "style" attributes to the "img"
+; tag, and also to permit the "math" tag. Unspecified attributes will be stripped.
+; allowed_galley_html = "img[id|style],math"
+
+; When the filter_galley_html option is turned On, only specified allowed media hosts are allowed.
+; allowed_media_hosts = '["doi.org", "wikipedia.org"]'
+
 
 ;;;;;;;;;;;;;;;;;;
 ; Email Settings ;

@@ -20,6 +20,7 @@ namespace APP\plugins\oaiMetadataFormats\marcxml;
 
 use APP\core\Application;
 use APP\facades\Repo;
+use APP\issue\Issue;
 use APP\journal\Journal;
 use APP\publication\Publication;
 use APP\submission\Submission;
@@ -56,6 +57,7 @@ class OAIMetadataFormat_MARC21 extends OAIMetadataFormat
             'article' => $article,
             'publication' => $publication,
             'issue' => $record->getData('issue'),
+            'relatedParts' => $this->getRelatedParts($publication, $record->getData('issue')),
             'section' => $record->getData('section'),
             'publicationLocale' => $publicationLocale,
             'versionString' => Repo::publication()->getVersionString($publication, $article, $journal),
@@ -64,18 +66,37 @@ class OAIMetadataFormat_MARC21 extends OAIMetadataFormat
         ]);
 
         $subjects = array_merge_recursive(
-            stripAssocArray((array) $publication->getData('discipline')),
+            stripAssocArray((array) $publication->getData('disciplines')),
             stripAssocArray((array) $publication->getData('subjects'))
         );
 
+        // Controlled vocabulary entries are returned as ['name' => ...] arrays; pull the names.
+        $subjectValues = collect($subjects[$publicationLocale] ?? $subjects[$journal->getPrimaryLocale()] ?? [])
+            ->pluck('name')
+            ->filter()
+            ->values()
+            ->all();
+
         $templateMgr->assign([
-            'subject' => $subjects[$publicationLocale] ?? $subjects[$journal->getPrimaryLocale()] ?? '',
+            'subject' => $subjectValues,
             'abstract' => PKPString::html2text($publication->getData('abstract', $publicationLocale)),
             'language' => LocaleConversion::get3LetterIsoFromLocale($publicationLocale)
         ]);
 
         $plugin = PluginRegistry::getPlugin('oaiMetadataFormats', 'OAIFormatPlugin_MARC21');
         return $templateMgr->fetch($plugin->getTemplateResource('record.tpl'));
+    }
+
+    /**
+     * Build the 773 $g (related parts) value: issue identification, then pages
+     * or, when there are no pages, the article number.
+     */
+    protected function getRelatedParts(Publication $publication, ?Issue $issue): string
+    {
+        return implode(', ', array_filter([
+            $issue?->getIssueIdentification(),
+            $publication->getData('pages') ?: $publication->getData('articleNumber'),
+        ]));
     }
 
     /**
